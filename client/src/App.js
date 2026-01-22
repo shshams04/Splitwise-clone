@@ -368,49 +368,107 @@ function App() {
   const loadExpenses = async (groupId) => {
     try {
       console.log('Loading expenses for group:', groupId);
-      // For now, use local expenses - we'll add Supabase integration next
-      const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
-      setExpenses(localExpenses);
+      // Load from Supabase instead of localStorage
+      const { data } = await supabase.select('expenses');
+      const groupExpenses = data.filter(expense => expense.group_id === groupId);
+      console.log('Expenses loaded:', groupExpenses);
+      setExpenses(groupExpenses);
     } catch (error) {
       console.error('Error loading expenses:', error);
-      setExpenses([]);
+      // Fallback to localStorage for existing expenses
+      try {
+        const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
+        setExpenses(localExpenses);
+        console.log('Using local expenses as fallback');
+      } catch (localError) {
+        setExpenses([]);
+      }
     }
   };
 
   const handleAddExpense = async () => {
     if (expenseForm.description.trim() && expenseForm.amount.trim()) {
       const newExpense = {
-        id: Date.now(),
-        groupId: selectedGroup.id,
+        group_id: selectedGroup.id,
         description: expenseForm.description,
         amount: parseFloat(expenseForm.amount),
-        paidBy: expenseForm.paidBy,
-        splitWith: expenseForm.splitWith,
-        date: new Date().toLocaleDateString(),
+        paid_by: user?.id || null, // Use user ID from authenticated user
         created_at: new Date().toISOString()
       };
 
-      const updatedExpenses = [...expenses, newExpense];
-      setExpenses(updatedExpenses);
-      
-      // Save to localStorage for now
-      localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
-      
-      // Reset form
-      setExpenseForm({
-        description: '',
-        amount: '',
-        paidBy: 'You',
-        splitWith: 'You'
-      });
-      setShowAddExpense(false);
+      setLoading(true);
+      try {
+        console.log('Adding expense to Supabase:', newExpense);
+        const { data } = await supabase.insert('expenses', newExpense);
+        console.log('Expense added to Supabase:', data);
+        
+        // Update local state with the new expense
+        const updatedExpenses = [...expenses, { 
+          ...newExpense, 
+          id: data[0]?.id || Date.now(),
+          // Add display fields for UI
+          paidBy: expenseForm.paidBy,
+          splitWith: expenseForm.splitWith,
+          date: new Date().toLocaleDateString()
+        }];
+        setExpenses(updatedExpenses);
+        
+        // Reset form
+        setExpenseForm({
+          description: '',
+          amount: '',
+          paidBy: 'You',
+          splitWith: 'You'
+        });
+        setShowAddExpense(false);
+      } catch (error) {
+        console.error('Error adding expense to Supabase:', error);
+        // Fallback to localStorage
+        const fallbackExpense = { 
+          ...newExpense, 
+          id: Date.now(),
+          paidBy: expenseForm.paidBy,
+          splitWith: expenseForm.splitWith,
+          date: new Date().toLocaleDateString()
+        };
+        const updatedExpenses = [...expenses, fallbackExpense];
+        setExpenses(updatedExpenses);
+        localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
+        
+        setExpenseForm({
+          description: '',
+          amount: '',
+          paidBy: 'You',
+          splitWith: 'You'
+        });
+        setShowAddExpense(false);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleDeleteExpense = (expenseId) => {
-    const updatedExpenses = expenses.filter(exp => exp.id !== expenseId);
-    setExpenses(updatedExpenses);
-    localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
+  const handleDeleteExpense = async (expenseId) => {
+    setLoading(true);
+    try {
+      console.log('Deleting expense:', expenseId);
+      
+      // Update local state immediately for better UX
+      const updatedExpenses = expenses.filter(exp => exp.id !== expenseId);
+      setExpenses(updatedExpenses);
+      
+      // Note: We'd need to implement delete function in supabase client
+      // For now, we'll just update local state
+      
+      console.log('Expense deleted from local state');
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      // Still update local state even if error occurs
+      const updatedExpenses = expenses.filter(exp => exp.id !== expenseId);
+      setExpenses(updatedExpenses);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBackToGroups = () => {
