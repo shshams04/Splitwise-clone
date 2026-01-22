@@ -27,6 +27,66 @@ const supabase = {
       body: JSON.stringify(data)
     });
     return { data: await response.json(), error: null };
+  },
+
+  // Auth functions
+  async signUp(email, password, username) {
+    const response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        options: {
+          data: {
+            username
+          }
+        }
+      })
+    });
+    return { data: await response.json(), error: null };
+  },
+
+  async signIn(email, password) {
+    const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        password
+      })
+    });
+    return { data: await response.json(), error: null };
+  },
+
+  async signOut() {
+    const response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${localStorage.getItem('supabase_token')}`
+      }
+    });
+    return { data: await response.json(), error: null };
+  },
+
+  async getCurrentUser() {
+    const token = localStorage.getItem('supabase_token');
+    if (!token) return null;
+    
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return { data: await response.json(), error: null };
   }
 };
 
@@ -36,6 +96,11 @@ function App() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Authentication state
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
   
   // Expense tracking state
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -47,6 +112,116 @@ function App() {
     paidBy: 'You',
     splitWith: 'You'
   });
+
+  // Auth form state
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: ''
+  });
+  const [registerForm, setRegisterForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+
+  // Check for existing user on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data } = await supabase.getCurrentUser();
+      if (data && !data.error) {
+        setUser(data);
+        setCurrentPage('dashboard');
+        loadGroups();
+      } else {
+        setCurrentPage('login');
+      }
+    } catch (error) {
+      setCurrentPage('login');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!loginForm.email || !loginForm.password) {
+      setAuthError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    setAuthError('');
+    
+    try {
+      const { data } = await supabase.signIn(loginForm.email, loginForm.password);
+      
+      if (data.access_token) {
+        localStorage.setItem('supabase_token', data.access_token);
+        setUser(data.user);
+        setCurrentPage('dashboard');
+        loadGroups();
+      } else {
+        setAuthError('Login failed. Please check your credentials.');
+      }
+    } catch (error) {
+      setAuthError('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!registerForm.username || !registerForm.email || !registerForm.password) {
+      setAuthError('Please fill in all fields');
+      return;
+    }
+
+    if (registerForm.password !== registerForm.confirmPassword) {
+      setAuthError('Passwords do not match');
+      return;
+    }
+
+    if (registerForm.password.length < 6) {
+      setAuthError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    setAuthError('');
+    
+    try {
+      const { data } = await supabase.signUp(registerForm.email, registerForm.password, registerForm.username);
+      
+      if (data.access_token) {
+        localStorage.setItem('supabase_token', data.access_token);
+        setUser(data.user);
+        setCurrentPage('dashboard');
+        loadGroups();
+      } else {
+        setAuthError('Registration failed. Please try again.');
+      }
+    } catch (error) {
+      setAuthError('Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.signOut();
+      localStorage.removeItem('supabase_token');
+      setUser(null);
+      setGroups([]);
+      setCurrentPage('login');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
 
   // Load groups from Supabase on component mount
   useEffect(() => {
@@ -320,10 +495,19 @@ function App() {
         return (
           <div style={{ maxWidth: '400px', margin: '0 auto', padding: '32px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', marginBottom: '24px', textAlign: 'center' }}>Login</h2>
+            
+            {authError && (
+              <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '16px' }}>
+                <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: 0 }}>{authError}</p>
+              </div>
+            )}
+            
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Email</label>
               <input
                 type="email"
+                value={loginForm.email}
+                onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 placeholder="Enter your email"
               />
@@ -332,27 +516,30 @@ function App() {
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Password</label>
               <input
                 type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 placeholder="Enter your password"
               />
             </div>
             <button
-              onClick={() => setCurrentPage('dashboard')}
+              onClick={handleLogin}
+              disabled={loading}
               style={{
-                backgroundColor: '#3b82f6',
+                backgroundColor: loading ? '#6b7280' : '#3b82f6',
                 color: 'white',
                 padding: '10px 16px',
                 borderRadius: '6px',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
                 width: '100%'
               }}
             >
-              Login
+              {loading ? 'Signing in...' : 'Login'}
             </button>
             <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.875rem', color: '#6b7280' }}>
-              Don't have an account? <button onClick={() => setCurrentPage('register')} style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer' }}>Register</button>
+              Don't have an account? <button onClick={() => { setCurrentPage('register'); setAuthError(''); }} style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer' }}>Register</button>
             </p>
           </div>
         );
@@ -361,10 +548,19 @@ function App() {
         return (
           <div style={{ maxWidth: '400px', margin: '0 auto', padding: '32px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', marginBottom: '24px', textAlign: 'center' }}>Register</h2>
+            
+            {authError && (
+              <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '16px' }}>
+                <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: 0 }}>{authError}</p>
+              </div>
+            )}
+            
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Username</label>
               <input
                 type="text"
+                value={registerForm.username}
+                onChange={(e) => setRegisterForm({...registerForm, username: e.target.value})}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 placeholder="Choose a username"
               />
@@ -373,35 +569,50 @@ function App() {
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Email</label>
               <input
                 type="email"
+                value={registerForm.email}
+                onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 placeholder="Enter your email"
               />
             </div>
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Password</label>
               <input
                 type="password"
+                value={registerForm.password}
+                onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
-                placeholder="Create a password"
+                placeholder="Create a password (min 6 chars)"
+              />
+            </div>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Confirm Password</label>
+              <input
+                type="password"
+                value={registerForm.confirmPassword}
+                onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                placeholder="Confirm your password"
               />
             </div>
             <button
-              onClick={() => setCurrentPage('dashboard')}
+              onClick={handleRegister}
+              disabled={loading}
               style={{
-                backgroundColor: '#10b981',
+                backgroundColor: loading ? '#6b7280' : '#10b981',
                 color: 'white',
                 padding: '10px 16px',
                 borderRadius: '6px',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
                 width: '100%'
               }}
             >
-              Register
+              {loading ? 'Creating account...' : 'Register'}
             </button>
             <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.875rem', color: '#6b7280' }}>
-              Already have an account? <button onClick={() => setCurrentPage('login')} style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer' }}>Login</button>
+              Already have an account? <button onClick={() => { setCurrentPage('login'); setAuthError(''); }} style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer' }}>Login</button>
             </p>
           </div>
         );
@@ -418,35 +629,59 @@ function App() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '64px' }}>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>Splitwise</h1>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <button
-                onClick={() => setCurrentPage('login')}
-                style={{
-                  color: currentPage === 'login' ? '#3b82f6' : '#6b7280',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  padding: '8px 12px',
-                  borderRadius: '4px'
-                }}
-              >
-                Login
-              </button>
-              <button
-                onClick={() => setCurrentPage('register')}
-                style={{
-                  color: currentPage === 'register' ? '#3b82f6' : '#6b7280',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  padding: '8px 12px',
-                  borderRadius: '4px'
-                }}
-              >
-                Register
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {user ? (
+                <>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    👋 {user.user_metadata?.username || user.email}
+                  </span>
+                  <button
+                    onClick={handleSignOut}
+                    style={{
+                      color: '#6b7280',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      padding: '8px 12px',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setCurrentPage('login')}
+                    style={{
+                      color: currentPage === 'login' ? '#3b82f6' : '#6b7280',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      padding: '8px 12px',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage('register')}
+                    style={{
+                      color: currentPage === 'register' ? '#3b82f6' : '#6b7280',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      padding: '8px 12px',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    Register
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
