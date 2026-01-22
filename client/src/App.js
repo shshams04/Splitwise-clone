@@ -91,7 +91,7 @@ const supabase = {
 };
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState('loading');
   const [groups, setGroups] = useState([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
@@ -132,9 +132,9 @@ function App() {
 
   const checkAuth = async () => {
     try {
-      const { data } = await supabase.getCurrentUser();
-      if (data && !data.error) {
-        setUser(data);
+      const token = localStorage.getItem('supabase_token');
+      if (token) {
+        // Simple token validation - if token exists, assume user is logged in
         setCurrentPage('dashboard');
         loadGroups();
       } else {
@@ -341,6 +341,17 @@ function App() {
   };
 
   const renderPage = () => {
+    // Show loading while checking auth
+    if (currentPage === 'loading') {
+      return (
+        <div style={{ textAlign: 'center', padding: '48px' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '16px' }}>🔄</div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Loading...</h2>
+          <p style={{ color: '#6b7280' }}>Setting up your Splitwise experience</p>
+        </div>
+      );
+    }
+
     // If a group is selected, show group detail view
     if (selectedGroup) {
       return (
