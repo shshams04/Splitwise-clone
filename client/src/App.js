@@ -399,11 +399,12 @@ function App() {
 
   const handleAddExpense = async () => {
     if (expenseForm.description.trim() && expenseForm.amount.trim()) {
+      // Create expense with minimal required fields
       const newExpense = {
         group_id: selectedGroup.id,
         description: expenseForm.description,
         amount: parseFloat(expenseForm.amount),
-        paid_by: user?.id || null, // Use user ID from authenticated user
+        paid_by: user?.id || '00000000-0000-0000-0000-000000000000', // Fallback UUID
         created_at: new Date().toISOString()
       };
 
@@ -413,25 +414,30 @@ function App() {
 
       setLoading(true);
       try {
+        // First try to add to Supabase
         console.log('Adding expense to Supabase:', newExpense);
-        const { data } = await supabase.insert('expenses', newExpense);
+        const { data, error } = await supabase.insert('expenses', newExpense);
+        
+        if (error) {
+          console.error('Supabase insert error:', error);
+          throw error;
+        }
+        
         console.log('Expense added to Supabase response:', data);
         
-        if (data && data[0]) {
-          // Update local state with the new expense
-          const updatedExpenses = [...expenses, { 
-            ...newExpense, 
-            id: data[0].id,
-            // Add display fields for UI
-            paidBy: expenseForm.paidBy,
-            splitWith: expenseForm.splitWith,
-            date: new Date().toLocaleDateString()
-          }];
-          console.log('Updated expenses list:', updatedExpenses);
-          setExpenses(updatedExpenses);
-        } else {
-          console.error('No data returned from Supabase insert');
-        }
+        // Update local state with the new expense
+        const displayExpense = {
+          ...newExpense,
+          id: data?.[0]?.id || Date.now(),
+          // Add display fields for UI
+          paidBy: expenseForm.paidBy,
+          splitWith: expenseForm.splitWith,
+          date: new Date().toLocaleDateString()
+        };
+        
+        const updatedExpenses = [...expenses, displayExpense];
+        console.log('Updated expenses list:', updatedExpenses);
+        setExpenses(updatedExpenses);
         
         // Reset form
         setExpenseForm({
@@ -441,9 +447,12 @@ function App() {
           splitWith: 'You'
         });
         setShowAddExpense(false);
+        
       } catch (error) {
         console.error('Error adding expense to Supabase:', error);
+        
         // Fallback to localStorage
+        console.log('Using localStorage fallback');
         const fallbackExpense = { 
           ...newExpense, 
           id: Date.now(),
@@ -451,11 +460,13 @@ function App() {
           splitWith: expenseForm.splitWith,
           date: new Date().toLocaleDateString()
         };
+        
         const updatedExpenses = [...expenses, fallbackExpense];
-        console.log('Using localStorage fallback:', updatedExpenses);
+        console.log('Fallback expenses list:', updatedExpenses);
         setExpenses(updatedExpenses);
         localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
         
+        // Reset form
         setExpenseForm({
           description: '',
           amount: '',
