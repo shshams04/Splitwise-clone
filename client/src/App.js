@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import NavbarMinimal from './components/NavbarMinimal';
+import Dashboard from './pages/Dashboard';
 import { AuthProvider } from './context/AuthContext';
 
 // Simple placeholder components
@@ -15,13 +16,6 @@ const Register = () => (
   <div style={{ textAlign: 'center', padding: '40px' }}>
     <h1 style={{ fontSize: '2rem', marginBottom: '16px' }}>Register Page</h1>
     <p style={{ color: '#6b7280' }}>Register functionality coming soon!</p>
-  </div>
-);
-
-const Dashboard = () => (
-  <div style={{ textAlign: 'center', padding: '40px' }}>
-    <h1 style={{ fontSize: '2rem', marginBottom: '16px' }}>Dashboard</h1>
-    <p style={{ color: '#6b7280' }}>Dashboard functionality coming soon!</p>
   </div>
 );
 
