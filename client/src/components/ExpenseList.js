@@ -1,5 +1,4 @@
 import React from 'react';
-import axios from 'axios';
 import { TrashIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 
 const ExpenseList = ({ expenses, onExpenseDeleted }) => {

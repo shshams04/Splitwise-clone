@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 const ExpenseForm = ({ groupId, groupMembers, onExpenseAdded, onClose }) => {
   const [description, setDescription] = useState('');
