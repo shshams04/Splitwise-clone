@@ -6,7 +6,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GroupDetail from './pages/GroupDetail';
 import DemoMode from './components/DemoMode';
-import { AuthProvider, useAuth } from './context/AuthContextSupabase';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
 
 function App() {

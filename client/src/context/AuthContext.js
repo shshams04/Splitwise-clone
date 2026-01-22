@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api';
+import { authHelpers } from '../supabaseClient';
 
 const AuthContext = createContext();
 
@@ -16,74 +16,83 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      fetchUser();
-    } else {
+    // Check initial auth state
+    const initializeAuth = async () => {
+      const { user } = await authHelpers.getCurrentUser();
+      setUser(user);
       setLoading(false);
-    }
-  }, []);
+    };
 
-  const fetchUser = async () => {
-    try {
-      const response = await api.get('/auth/me');
-      setUser(response.data.user);
-    } catch (error) {
-      localStorage.removeItem('token');
-      delete api.defaults.headers.common['Authorization'];
-    } finally {
+    initializeAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = authHelpers.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        setUser(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
       setLoading(false);
-    }
-  };
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const login = async (email, password) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
+      const { data, error } = await authHelpers.signIn(email, password);
+      if (error) {
+        return { 
+          success: false, 
+          error: error.message || 'Login failed' 
+        };
+      }
+      setUser(data.user);
       return { success: true };
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Login failed' 
+        error: 'Login failed' 
       };
     }
   };
 
-  const register = async (username, email, password) => {
+  const register = async (email, password, username) => {
     try {
-      console.log('Attempting registration with:', { username, email, password });
-      const response = await api.post('/auth/register', { username, email, password });
-      console.log('Registration response:', response.data);
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
+      const { data, error } = await authHelpers.signUp(email, password, username);
+      if (error) {
+        return { 
+          success: false, 
+          error: error.message || 'Registration failed' 
+        };
+      }
+      setUser(data.user);
       return { success: true };
     } catch (error) {
-      console.log('Registration error:', error.response?.data || error.message);
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Registration failed' 
+        error: 'Registration failed' 
       };
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
-    setUser(null);
+  const logout = async () => {
+    try {
+      const { error } = await authHelpers.signOut();
+      if (!error) {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const value = {
     user,
+    loading,
     login,
     register,
-    logout,
-    loading
+    logout
   };
 
   return (
