@@ -212,7 +212,15 @@ function App() {
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setAuthError(`Registration failed: ${error.message || 'Please try again.'}`);
+      
+      // Check for specific error messages
+      if (error.message && error.message.includes('already registered')) {
+        setAuthError('This email is already registered. Try logging in or use a different email.');
+      } else if (error.message && error.message.includes('Password')) {
+        setAuthError('Password issue: ' + error.message);
+      } else {
+        setAuthError(`Registration failed: ${error.message || 'Please try again.'}`);
+      }
     } finally {
       setLoading(false);
     }
