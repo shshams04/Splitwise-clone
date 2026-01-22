@@ -371,29 +371,43 @@ function App() {
       console.log('Current user:', user);
       console.log('User ID:', user?.id);
       
-      // Load from Supabase instead of localStorage
-      const { data } = await supabase.select('expenses');
-      console.log('All expenses from Supabase:', data);
+      // First try to load from Supabase
+      try {
+        const { data } = await supabase.select('expenses');
+        console.log('All expenses from Supabase:', data);
+        
+        const groupExpenses = data.filter(expense => {
+          console.log('Comparing expense.group_id:', expense.group_id, 'with groupId:', groupId);
+          console.log('Match:', expense.group_id === groupId);
+          return expense.group_id === groupId;
+        });
+        
+        console.log('Filtered expenses for group:', groupExpenses);
+        
+        if (groupExpenses.length > 0) {
+          setExpenses(groupExpenses);
+          return; // Found expenses in Supabase, don't check localStorage
+        }
+      } catch (supabaseError) {
+        console.error('Supabase loading failed:', supabaseError);
+      }
       
-      const groupExpenses = data.filter(expense => {
-        console.log('Comparing expense.group_id:', expense.group_id, 'with groupId:', groupId);
-        console.log('Match:', expense.group_id === groupId);
-        return expense.group_id === groupId;
-      });
+      // Fallback to localStorage
+      console.log('Checking localStorage for expenses...');
+      const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
+      console.log('Local expenses found:', localExpenses);
       
-      console.log('Filtered expenses for group:', groupExpenses);
-      setExpenses(groupExpenses);
+      if (localExpenses.length > 0) {
+        setExpenses(localExpenses);
+        console.log('Using local expenses');
+      } else {
+        setExpenses([]);
+        console.log('No expenses found');
+      }
+      
     } catch (error) {
       console.error('Error loading expenses:', error);
-      // Fallback to localStorage for existing expenses
-      try {
-        const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
-        console.log('Using local expenses as fallback:', localExpenses);
-        setExpenses(localExpenses);
-      } catch (localError) {
-        console.error('Local storage fallback failed:', localError);
-        setExpenses([]);
-      }
+      setExpenses([]);
     }
   };
 
@@ -703,38 +717,49 @@ function App() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {expenses.map(expense => (
-                <div key={expense.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                    <div>
-                      <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
-                        {expense.description}
-                      </h3>
-                      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '8px' }}>
-                        Paid by {expense.paidBy} • {expense.date}
-                      </p>
-                      <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                        Split with {expense.splitWith}
-                      </p>
+                <div key={expense.id} style={{ 
+                  backgroundColor: 'white', 
+                  padding: '16px', 
+                  borderRadius: '8px', 
+                  marginBottom: '12px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                      {expense.description}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>
-                        ${expense.amount.toFixed(2)}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteExpense(expense.id)}
-                        style={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        Delete
-                      </button>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '4px' }}>
+                      Paid by {expense.paidBy || expense.paid_by} • Split with {expense.splitWith || 'You'}
                     </div>
+                    <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                      {expense.date || new Date(expense.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>
+                      ${expense.amount}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteExpense(expense.id)}
+                      disabled={loading}
+                      style={{
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {loading ? '...' : '🗑️'}
+                    </button>
                   </div>
                 </div>
               ))}
