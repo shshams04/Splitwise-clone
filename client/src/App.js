@@ -1,10 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import NavbarMinimal from './components/NavbarMinimal';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
 import { AuthProvider } from './context/AuthContext';
+
+// Simple placeholder components
+const Login = () => (
+  <div style={{ textAlign: 'center', padding: '40px' }}>
+    <h1 style={{ fontSize: '2rem', marginBottom: '16px' }}>Login Page</h1>
+    <p style={{ color: '#6b7280' }}>Login functionality coming soon!</p>
+  </div>
+);
+
+const Register = () => (
+  <div style={{ textAlign: 'center', padding: '40px' }}>
+    <h1 style={{ fontSize: '2rem', marginBottom: '16px' }}>Register Page</h1>
+    <p style={{ color: '#6b7280' }}>Register functionality coming soon!</p>
+  </div>
+);
+
+const Dashboard = () => (
+  <div style={{ textAlign: 'center', padding: '40px' }}>
+    <h1 style={{ fontSize: '2rem', marginBottom: '16px' }}>Dashboard</h1>
+    <p style={{ color: '#6b7280' }}>Dashboard functionality coming soon!</p>
+  </div>
+);
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
