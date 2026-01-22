@@ -6,37 +6,11 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GroupDetail from './pages/GroupDetail';
 import DemoMode from './components/DemoMode';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import api from './api';
+import { AuthProvider, useAuth } from './context/AuthContextSupabase';
+import { supabase } from './supabaseClient';
 
 function App() {
-  const [demoMode, setDemoMode] = useState(false);
-  const [checkingBackend, setCheckingBackend] = useState(true);
-
-  useEffect(() => {
-    // Check if backend is available
-    const checkBackend = async () => {
-      try {
-        await api.get('/auth/me');
-        setDemoMode(false);
-      } catch (error) {
-        setDemoMode(true);
-      } finally {
-        setCheckingBackend(false);
-      }
-    };
-
-    checkBackend();
-  }, []);
-
-  if (checkingBackend) {
-    return <div className="flex justify-center items-center h-screen">Checking deployment...</div>;
-  }
-
-  if (demoMode) {
-    return <DemoMode />;
-  }
-
+  // No need for demo mode - Supabase is always available!
   return (
     <AuthProvider>
       <Router>
