@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import { AuthProvider } from './context/AuthContext';
+import ClientOnly from './components/ClientOnly';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -52,23 +53,25 @@ class ErrorBoundary extends React.Component {
 
 const App = () => {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <NavbarMinimal />
-            <main className="container mx-auto px-4 py-8">
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/" element={<Navigate to="/dashboard" />} />
-              </Routes>
-            </main>
-          </div>
-        </Router>
-      </AuthProvider>
-    </ErrorBoundary>
+    <ClientOnly>
+      <ErrorBoundary>
+        <AuthProvider>
+          <Router>
+            <div className="min-h-screen bg-gray-50">
+              <NavbarMinimal />
+              <main className="container mx-auto px-4 py-8">
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/" element={<Navigate to="/dashboard" />} />
+                </Routes>
+              </main>
+            </div>
+          </Router>
+        </AuthProvider>
+      </ErrorBoundary>
+    </ClientOnly>
   );
 };
 
