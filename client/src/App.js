@@ -50,7 +50,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function App() {
+const App = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -70,6 +70,6 @@ function App() {
       </AuthProvider>
     </ErrorBoundary>
   );
-}
+};
 
 export default App;
