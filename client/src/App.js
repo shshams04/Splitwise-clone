@@ -36,6 +36,17 @@ function App() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Expense tracking state
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [expenses, setExpenses] = useState([]);
+  const [expenseForm, setExpenseForm] = useState({
+    description: '',
+    amount: '',
+    paidBy: 'You',
+    splitWith: 'You'
+  });
 
   // Load groups from Supabase on component mount
   useEffect(() => {
@@ -96,7 +107,158 @@ function App() {
     }
   };
 
+  const handleViewGroup = (group) => {
+    setSelectedGroup(group);
+    loadExpenses(group.id);
+  };
+
+  const loadExpenses = async (groupId) => {
+    try {
+      console.log('Loading expenses for group:', groupId);
+      // For now, use local expenses - we'll add Supabase integration next
+      const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
+      setExpenses(localExpenses);
+    } catch (error) {
+      console.error('Error loading expenses:', error);
+      setExpenses([]);
+    }
+  };
+
+  const handleAddExpense = async () => {
+    if (expenseForm.description.trim() && expenseForm.amount.trim()) {
+      const newExpense = {
+        id: Date.now(),
+        groupId: selectedGroup.id,
+        description: expenseForm.description,
+        amount: parseFloat(expenseForm.amount),
+        paidBy: expenseForm.paidBy,
+        splitWith: expenseForm.splitWith,
+        date: new Date().toLocaleDateString(),
+        created_at: new Date().toISOString()
+      };
+
+      const updatedExpenses = [...expenses, newExpense];
+      setExpenses(updatedExpenses);
+      
+      // Save to localStorage for now
+      localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
+      
+      // Reset form
+      setExpenseForm({
+        description: '',
+        amount: '',
+        paidBy: 'You',
+        splitWith: 'You'
+      });
+      setShowAddExpense(false);
+    }
+  };
+
+  const handleDeleteExpense = (expenseId) => {
+    const updatedExpenses = expenses.filter(exp => exp.id !== expenseId);
+    setExpenses(updatedExpenses);
+    localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
+  };
+
+  const handleBackToGroups = () => {
+    setSelectedGroup(null);
+    setExpenses([]);
+  };
+
   const renderPage = () => {
+    // If a group is selected, show group detail view
+    if (selectedGroup) {
+      return (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
+            <button
+              onClick={handleBackToGroups}
+              style={{
+                backgroundColor: '#6b7280',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                marginRight: '16px'
+              }}
+            >
+              ← Back to Groups
+            </button>
+            <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+              {selectedGroup.name}
+            </h1>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827' }}>Expenses</h2>
+            <button
+              onClick={() => setShowAddExpense(true)}
+              style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              + Add Expense
+            </button>
+          </div>
+
+          {expenses.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>💰</div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>No expenses yet</h2>
+              <p style={{ color: '#6b7280' }}>Add your first expense to start tracking!</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {expenses.map(expense => (
+                <div key={expense.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                        {expense.description}
+                      </h3>
+                      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '8px' }}>
+                        Paid by {expense.paidBy} • {expense.date}
+                      </p>
+                      <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        Split with {expense.splitWith}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>
+                        ${expense.amount.toFixed(2)}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteExpense(expense.id)}
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     switch(currentPage) {
       case 'dashboard':
         return (
@@ -133,6 +295,7 @@ function App() {
                     <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>{group.name}</h3>
                     <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '16px' }}>Created: {group.created}</p>
                     <button
+                      onClick={() => handleViewGroup(group)}
                       style={{
                         backgroundColor: '#3b82f6',
                         color: 'white',
@@ -348,6 +511,101 @@ function App() {
                   borderRadius: '6px',
                   border: 'none',
                   cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  flex: 1
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Expense Modal */}
+      {showAddExpense && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '400px', width: '100%', margin: '16px' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Add Expense</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Description</label>
+              <input
+                type="text"
+                value={expenseForm.description}
+                onChange={(e) => setExpenseForm({...expenseForm, description: e.target.value})}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                placeholder="What's this expense for?"
+                autoFocus
+              />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Amount</label>
+              <input
+                type="number"
+                value={expenseForm.amount}
+                onChange={(e) => setExpenseForm({...expenseForm, amount: e.target.value})}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                placeholder="0.00"
+                step="0.01"
+              />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Paid By</label>
+              <select
+                value={expenseForm.paidBy}
+                onChange={(e) => setExpenseForm({...expenseForm, paidBy: e.target.value})}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+              >
+                <option value="You">You</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Split With</label>
+              <select
+                value={expenseForm.splitWith}
+                onChange={(e) => setExpenseForm({...expenseForm, splitWith: e.target.value})}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+              >
+                <option value="You">You</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleAddExpense}
+                disabled={!expenseForm.description.trim() || !expenseForm.amount.trim()}
+                style={{
+                  backgroundColor: (!expenseForm.description.trim() || !expenseForm.amount.trim()) ? '#6b7280' : '#10b981',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: (!expenseForm.description.trim() || !expenseForm.amount.trim()) ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  flex: 1
+                }}
+              >
+                Add Expense
+              </button>
+              <button
+                onClick={() => setShowAddExpense(false)}
+                style={{
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
                   fontSize: '14px',
                   flex: 1
                 }}
