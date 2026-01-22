@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import ExpenseForm from '../components/ExpenseForm';
 import ExpenseList from '../components/ExpenseList';
 import BalanceSummary from '../components/BalanceSummary';
 import GroupMembers from '../components/GroupMembers';
 import { PlusIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
+import api from '../api';
 
 const GroupDetail = () => {
   const { id } = useParams();
@@ -20,9 +20,9 @@ const GroupDetail = () => {
     const fetchGroupData = async () => {
       try {
         const [groupRes, expensesRes, balancesRes] = await Promise.all([
-          axios.get(`/api/groups/${id}`),
-          axios.get(`/api/expenses/group/${id}`),
-          axios.get(`/api/expenses/balances/${id}`)
+          api.get(`/groups/${id}`),
+          api.get(`/expenses/group/${id}`),
+          api.get(`/expenses/balances/${id}`)
         ]);
         
         setGroup(groupRes.data);

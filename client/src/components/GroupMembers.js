@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import api from '../api';
 
 const GroupMembers = ({ group, currentUser, onMemberAdded, onMemberRemoved }) => {
   const [email, setEmail] = useState('');
@@ -14,23 +15,16 @@ const GroupMembers = ({ group, currentUser, onMemberAdded, onMemberRemoved }) =>
     if (!isConfirmed) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/groups/${group._id}/members`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ email }),
+      const response = await api.post(`/groups/${group._id}/members`, {
+        email,
       });
 
-      if (response.ok) {
+      if (response.data) {
         setEmail('');
         setShowAddMember(false);
         onMemberAdded();
       } else {
-        const error = await response.json();
-        alert(error.message || 'Failed to add member');
+        alert(response.data?.message || 'Failed to add member');
       }
     } catch (error) {
       alert('Failed to add member');
@@ -43,19 +37,12 @@ const GroupMembers = ({ group, currentUser, onMemberAdded, onMemberRemoved }) =>
     if (!isConfirmed) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/groups/${group._id}/members/${memberId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await api.delete(`/groups/${group._id}/members/${memberId}`);
 
-      if (response.ok) {
+      if (response.data) {
         onMemberRemoved();
       } else {
-        const error = await response.json();
-        alert(error.message || 'Failed to remove member');
+        alert(response.data?.message || 'Failed to remove member');
       }
     } catch (error) {
       alert('Failed to remove member');
