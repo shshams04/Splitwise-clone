@@ -367,11 +367,24 @@ function App() {
 
   const loadExpenses = async (groupId) => {
     try {
-      console.log('Loading expenses for group:', groupId);
+      console.log('=== LOADING EXPENSES FOR GROUP:', groupId, '===');
       console.log('Current user:', user);
       console.log('User ID:', user?.id);
       
-      // First try to load from Supabase
+      // Always check localStorage first (most reliable for now)
+      console.log('Checking localStorage for key:', `expenses_${groupId}`);
+      const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
+      console.log('Local expenses found:', localExpenses);
+      console.log('Local expenses count:', localExpenses.length);
+      
+      if (localExpenses.length > 0) {
+        console.log('✅ Using local expenses');
+        setExpenses(localExpenses);
+        return;
+      }
+      
+      // If no local expenses, try Supabase
+      console.log('No local expenses, trying Supabase...');
       try {
         const { data } = await supabase.select('expenses');
         console.log('All expenses from Supabase:', data);
@@ -383,27 +396,23 @@ function App() {
         });
         
         console.log('Filtered expenses for group:', groupExpenses);
+        console.log('Supabase expenses count:', groupExpenses.length);
         
         if (groupExpenses.length > 0) {
+          console.log('✅ Using Supabase expenses');
           setExpenses(groupExpenses);
-          return; // Found expenses in Supabase, don't check localStorage
+          // Also save to localStorage as backup
+          localStorage.setItem(`expenses_${groupId}`, JSON.stringify(groupExpenses));
+          console.log('Saved Supabase expenses to localStorage backup');
+          return;
         }
       } catch (supabaseError) {
         console.error('Supabase loading failed:', supabaseError);
       }
       
-      // Fallback to localStorage
-      console.log('Checking localStorage for expenses...');
-      const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
-      console.log('Local expenses found:', localExpenses);
-      
-      if (localExpenses.length > 0) {
-        setExpenses(localExpenses);
-        console.log('Using local expenses');
-      } else {
-        setExpenses([]);
-        console.log('No expenses found');
-      }
+      // No expenses found anywhere
+      console.log('❌ No expenses found anywhere');
+      setExpenses([]);
       
     } catch (error) {
       console.error('Error loading expenses:', error);
@@ -423,8 +432,8 @@ function App() {
       };
 
       console.log('Creating expense:', newExpense);
+      console.log('Selected group ID:', selectedGroup.id);
       console.log('Selected group:', selectedGroup);
-      console.log('User:', user);
 
       setLoading(true);
       try {
@@ -453,6 +462,10 @@ function App() {
         console.log('Updated expenses list:', updatedExpenses);
         setExpenses(updatedExpenses);
         
+        // Also save to localStorage as backup
+        localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
+        console.log('Saved to localStorage backup:', `expenses_${selectedGroup.id}`);
+        
         // Reset form
         setExpenseForm({
           description: '',
@@ -479,6 +492,7 @@ function App() {
         console.log('Fallback expenses list:', updatedExpenses);
         setExpenses(updatedExpenses);
         localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
+        console.log('Saved to localStorage:', `expenses_${selectedGroup.id}`);
         
         // Reset form
         setExpenseForm({
