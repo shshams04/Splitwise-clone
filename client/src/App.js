@@ -1,16 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+// Supabase configuration
+const supabaseUrl = 'https://livinwsodaxjasdnrohx.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpdmlud3NvZGF4amFzZG5yb2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwOTAzODksImV4cCI6MjA4NDY2NjM4OX0.Ai-YXtiiq7Bh9Oufr0tvAKnjGIwoGRTYsnItiLl80e4';
+
+// Simple Supabase client
+const supabase = {
+  async select(table) {
+    const response = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`
+      }
+    });
+    return { data: await response.json(), error: null };
+  },
+  
+  async insert(table, data) {
+    const response = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    return { data: await response.json(), error: null };
+  }
+};
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [groups, setGroups] = useState([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleCreateGroup = () => {
+  // Load groups from Supabase on component mount
+  useEffect(() => {
+    loadGroups();
+  }, []);
+
+  const loadGroups = async () => {
+    try {
+      const { data } = await supabase.select('groups');
+      setGroups(data || []);
+    } catch (error) {
+      console.log('Using local groups for demo');
+    }
+  };
+
+  const handleCreateGroup = async () => {
     if (groupName.trim()) {
-      setGroups([...groups, { id: Date.now(), name: groupName, created: new Date().toLocaleDateString() }]);
-      setGroupName('');
-      setShowCreateGroup(false);
+      setLoading(true);
+      try {
+        // Try to save to Supabase
+        const newGroup = {
+          name: groupName,
+          description: '',
+          created_at: new Date().toISOString()
+        };
+        
+        const { data } = await supabase.insert('groups', newGroup);
+        
+        // Update local state with the new group
+        setGroups([...groups, { 
+          ...newGroup, 
+          id: data[0]?.id || Date.now(), 
+          created: new Date().toLocaleDateString() 
+        }]);
+        
+        setGroupName('');
+        setShowCreateGroup(false);
+      } catch (error) {
+        // Fallback to local storage if Supabase fails
+        const newGroup = { 
+          id: Date.now(), 
+          name: groupName, 
+          created: new Date().toLocaleDateString() 
+        };
+        setGroups([...groups, newGroup]);
+        setGroupName('');
+        setShowCreateGroup(false);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -23,17 +98,18 @@ function App() {
               <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>My Groups</h1>
               <button
                 onClick={() => setShowCreateGroup(true)}
+                disabled={loading}
                 style={{
-                  backgroundColor: '#10b981',
+                  backgroundColor: loading ? '#6b7280' : '#10b981',
                   color: 'white',
                   padding: '8px 16px',
                   borderRadius: '6px',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   fontSize: '14px'
                 }}
               >
-                + Create Group
+                {loading ? 'Loading...' : '+ Create Group'}
               </button>
             </div>
             
@@ -241,28 +317,30 @@ function App() {
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={handleCreateGroup}
+                disabled={loading || !groupName.trim()}
                 style={{
-                  backgroundColor: '#10b981',
+                  backgroundColor: (loading || !groupName.trim()) ? '#6b7280' : '#10b981',
                   color: 'white',
                   padding: '8px 16px',
                   borderRadius: '6px',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: (loading || !groupName.trim()) ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
                   flex: 1
                 }}
               >
-                Create
+                {loading ? 'Creating...' : 'Create'}
               </button>
               <button
                 onClick={() => setShowCreateGroup(false)}
+                disabled={loading}
                 style={{
-                  backgroundColor: '#6b7280',
+                  backgroundColor: loading ? '#6b7280' : '#6b7280',
                   color: 'white',
                   padding: '8px 16px',
                   borderRadius: '6px',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
                   flex: 1
                 }}
