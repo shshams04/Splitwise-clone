@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import NavbarMinimal from './components/NavbarMinimal';
 import Login from './pages/Login';
@@ -82,22 +82,53 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+const AppContent = () => {
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      <NavbarMinimal />
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </main>
+    </div>
+  );
+};
+
 const App = () => {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#f9fafb'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ color: '#10b981', fontSize: '2rem', marginBottom: '16px' }}>
+            🎉 Splitwise Clone
+          </h1>
+          <p style={{ color: '#6b7280', fontSize: '18px' }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <AuthProvider>
         <Router>
-          <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-            <NavbarMinimal />
-            <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/" element={<Navigate to="/dashboard" />} />
-              </Routes>
-            </main>
-          </div>
+          <AppContent />
         </Router>
       </AuthProvider>
     </ErrorBoundary>
