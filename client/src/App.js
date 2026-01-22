@@ -368,19 +368,30 @@ function App() {
   const loadExpenses = async (groupId) => {
     try {
       console.log('Loading expenses for group:', groupId);
+      console.log('Current user:', user);
+      console.log('User ID:', user?.id);
+      
       // Load from Supabase instead of localStorage
       const { data } = await supabase.select('expenses');
-      const groupExpenses = data.filter(expense => expense.group_id === groupId);
-      console.log('Expenses loaded:', groupExpenses);
+      console.log('All expenses from Supabase:', data);
+      
+      const groupExpenses = data.filter(expense => {
+        console.log('Comparing expense.group_id:', expense.group_id, 'with groupId:', groupId);
+        console.log('Match:', expense.group_id === groupId);
+        return expense.group_id === groupId;
+      });
+      
+      console.log('Filtered expenses for group:', groupExpenses);
       setExpenses(groupExpenses);
     } catch (error) {
       console.error('Error loading expenses:', error);
       // Fallback to localStorage for existing expenses
       try {
         const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
+        console.log('Using local expenses as fallback:', localExpenses);
         setExpenses(localExpenses);
-        console.log('Using local expenses as fallback');
       } catch (localError) {
+        console.error('Local storage fallback failed:', localError);
         setExpenses([]);
       }
     }
@@ -396,22 +407,31 @@ function App() {
         created_at: new Date().toISOString()
       };
 
+      console.log('Creating expense:', newExpense);
+      console.log('Selected group:', selectedGroup);
+      console.log('User:', user);
+
       setLoading(true);
       try {
         console.log('Adding expense to Supabase:', newExpense);
         const { data } = await supabase.insert('expenses', newExpense);
-        console.log('Expense added to Supabase:', data);
+        console.log('Expense added to Supabase response:', data);
         
-        // Update local state with the new expense
-        const updatedExpenses = [...expenses, { 
-          ...newExpense, 
-          id: data[0]?.id || Date.now(),
-          // Add display fields for UI
-          paidBy: expenseForm.paidBy,
-          splitWith: expenseForm.splitWith,
-          date: new Date().toLocaleDateString()
-        }];
-        setExpenses(updatedExpenses);
+        if (data && data[0]) {
+          // Update local state with the new expense
+          const updatedExpenses = [...expenses, { 
+            ...newExpense, 
+            id: data[0].id,
+            // Add display fields for UI
+            paidBy: expenseForm.paidBy,
+            splitWith: expenseForm.splitWith,
+            date: new Date().toLocaleDateString()
+          }];
+          console.log('Updated expenses list:', updatedExpenses);
+          setExpenses(updatedExpenses);
+        } else {
+          console.error('No data returned from Supabase insert');
+        }
         
         // Reset form
         setExpenseForm({
@@ -432,6 +452,7 @@ function App() {
           date: new Date().toLocaleDateString()
         };
         const updatedExpenses = [...expenses, fallbackExpense];
+        console.log('Using localStorage fallback:', updatedExpenses);
         setExpenses(updatedExpenses);
         localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
         
