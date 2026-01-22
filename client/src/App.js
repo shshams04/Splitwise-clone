@@ -442,23 +442,24 @@ function App() {
         created_at: new Date().toISOString()
       };
 
-      console.log('Creating expense:', newExpense);
-      console.log('Selected group ID:', selectedGroup.id);
-      console.log('Selected group:', selectedGroup);
-      console.log('localStorage key will be:', `expenses_${selectedGroup.id}`);
+      console.log('🚀 CREATING EXPENSE:');
+      console.log('📝 Expense data:', newExpense);
+      console.log('🏷️ Selected group ID:', selectedGroup.id);
+      console.log('🏷️ Selected group:', selectedGroup);
+      console.log('🔑 localStorage key will be:', `expenses_${selectedGroup.id}`);
 
       setLoading(true);
       try {
         // First try to add to Supabase
-        console.log('Adding expense to Supabase:', newExpense);
+        console.log('📤 Adding expense to Supabase...');
         const { data, error } = await supabase.insert('expenses', newExpense);
         
         if (error) {
-          console.error('Supabase insert error:', error);
+          console.error('❌ Supabase insert error:', error);
           throw error;
         }
         
-        console.log('Expense added to Supabase response:', data);
+        console.log('✅ Expense added to Supabase response:', data);
         
         // Update local state with the new expense
         const displayExpense = {
@@ -471,14 +472,18 @@ function App() {
         };
         
         const updatedExpenses = [...expenses, displayExpense];
-        console.log('Updated expenses list:', updatedExpenses);
+        console.log('📊 Updated expenses list:', updatedExpenses);
         setExpenses(updatedExpenses);
         
-        // Always save to localStorage as backup
+        // ALWAYS save to localStorage as backup (even if Supabase works)
         const localStorageKey = `expenses_${selectedGroup.id}`;
         localStorage.setItem(localStorageKey, JSON.stringify(updatedExpenses));
-        console.log('💾 Saved to localStorage backup:', localStorageKey);
-        console.log('💾 localStorage contents:', JSON.stringify(updatedExpenses));
+        console.log('💾 SAVED TO LOCAL STORAGE:', localStorageKey);
+        console.log('💾 LOCAL STORAGE CONTENTS:', JSON.stringify(updatedExpenses));
+        
+        // Verify it was saved
+        const verifySaved = localStorage.getItem(localStorageKey);
+        console.log('🔍 VERIFICATION - localStorage now contains:', verifySaved);
         
         // Reset form
         setExpenseForm({
@@ -490,10 +495,10 @@ function App() {
         setShowAddExpense(false);
         
       } catch (error) {
-        console.error('Error adding expense to Supabase:', error);
+        console.error('❌ Error adding expense to Supabase:', error);
         
         // Fallback to localStorage
-        console.log('Using localStorage fallback');
+        console.log('🔄 Using localStorage fallback');
         const fallbackExpense = { 
           ...newExpense, 
           id: Date.now(),
@@ -503,13 +508,17 @@ function App() {
         };
         
         const updatedExpenses = [...expenses, fallbackExpense];
-        console.log('Fallback expenses list:', updatedExpenses);
+        console.log('📊 Fallback expenses list:', updatedExpenses);
         setExpenses(updatedExpenses);
         
         const localStorageKey = `expenses_${selectedGroup.id}`;
         localStorage.setItem(localStorageKey, JSON.stringify(updatedExpenses));
-        console.log('💾 Saved to localStorage fallback:', localStorageKey);
-        console.log('💾 localStorage contents:', JSON.stringify(updatedExpenses));
+        console.log('💾 SAVED TO LOCAL STORAGE (FALLBACK):', localStorageKey);
+        console.log('💾 LOCAL STORAGE CONTENTS (FALLBACK):', JSON.stringify(updatedExpenses));
+        
+        // Verify it was saved
+        const verifySaved = localStorage.getItem(localStorageKey);
+        console.log('🔍 VERIFICATION - localStorage now contains:', verifySaved);
         
         // Reset form
         setExpenseForm({
