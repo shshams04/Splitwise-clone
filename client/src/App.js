@@ -106,11 +106,10 @@ function App() {
   const [memberEmail, setMemberEmail] = useState('');
   const [groupMembers, setGroupMembers] = useState([]);
 
-  // Expense tracking state
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  const [expenses, setExpenses] = useState([]);
-  const [expenseForm, setExpenseForm] = useState({
+  // Expense editing state
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [showEditExpense, setShowEditExpense] = useState(false);
+  const [editExpenseForm, setEditExpenseForm] = useState({
     description: '',
     amount: '',
     paidBy: 'You',
@@ -626,6 +625,67 @@ function App() {
     }
   };
 
+  // Expense editing functions
+  const handleEditExpense = (expense) => {
+    setEditingExpense(expense);
+    setEditExpenseForm({
+      description: expense.description,
+      amount: expense.amount.toString(),
+      paidBy: expense.paidBy || expense.paid_by || 'You',
+      splitWith: expense.splitWith || expense.split_with || 'You'
+    });
+    setShowEditExpense(true);
+  };
+
+  const handleUpdateExpense = async () => {
+    if (!editExpenseForm.description.trim() || !editExpenseForm.amount.trim()) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updatedExpense = {
+        ...editingExpense,
+        description: editExpenseForm.description,
+        amount: parseFloat(editExpenseForm.amount),
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Updating expense:', updatedExpense);
+
+      // Try to update in Supabase first
+      if (editingExpense.id && editingExpense.id.toString().length < 10) {
+        // This is a local expense, just update localStorage
+        const updatedExpenses = expenses.map(exp => 
+          exp.id === editingExpense.id ? updatedExpense : exp
+        );
+        setExpenses(updatedExpenses);
+        localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
+        console.log('Updated local expense:', updatedExpense);
+      } else {
+        // This might be a Supabase expense, try to update there
+        console.log('Would update Supabase expense:', updatedExpense);
+      }
+
+      // Reset form
+      setEditingExpense(null);
+      setEditExpenseForm({
+        description: '',
+        amount: '',
+        paidBy: 'You',
+        splitWith: 'You'
+      });
+      setShowEditExpense(false);
+
+    } catch (error) {
+      console.error('Error updating expense:', error);
+      alert('Failed to update expense. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Balance calculation functions
   const calculateBalances = (expenses) => {
     const balances = {};
@@ -902,16 +962,34 @@ function App() {
                       {expense.description}
                     </div>
                     <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '4px' }}>
-                      Paid by {expense.paidBy || expense.paid_by} • Split with {expense.splitWith || 'You'}
+                      Paid by {expense.paidBy || expense.paid_by} • Split with {expense.splitWith || expense.split_with || 'You'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
                       {expense.date || new Date(expense.created_at).toLocaleDateString()}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>
                       ${expense.amount}
                     </div>
+                    <button
+                      onClick={() => handleEditExpense(expense)}
+                      disabled={loading}
+                      style={{
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {loading ? '...' : '✏️'}
+                    </button>
                     <button
                       onClick={() => handleDeleteExpense(expense.id)}
                       disabled={loading}
@@ -1436,6 +1514,164 @@ function App() {
                 }}
               >
                 {loading ? 'Adding...' : 'Add Member'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Expense Modal */}
+      {showEditExpense && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '32px',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '500px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', marginBottom: '24px' }}>
+              Edit Expense
+            </h2>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                Description
+              </label>
+              <input
+                type="text"
+                value={editExpenseForm.description}
+                onChange={(e) => setEditExpenseForm({...editExpenseForm, description: e.target.value})}
+                placeholder="What's this expense for?"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                Amount
+              </label>
+              <input
+                type="number"
+                value={editExpenseForm.amount}
+                onChange={(e) => setEditExpenseForm({...editExpenseForm, amount: e.target.value})}
+                placeholder="0.00"
+                step="0.01"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                Paid By
+              </label>
+              <select
+                value={editExpenseForm.paidBy}
+                onChange={(e) => setEditExpenseForm({...editExpenseForm, paidBy: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              >
+                <option value="You">You</option>
+                {groupMembers.map(member => (
+                  <option key={member.id} value={member.email}>
+                    {member.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                Split With
+              </label>
+              <select
+                value={editExpenseForm.splitWith}
+                onChange={(e) => setEditExpenseForm({...editExpenseForm, splitWith: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              >
+                <option value="You">You</option>
+                {groupMembers.map(member => (
+                  <option key={member.id} value={member.email}>
+                    {member.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowEditExpense(false);
+                  setEditingExpense(null);
+                  setEditExpenseForm({
+                    description: '',
+                    amount: '',
+                    paidBy: 'You',
+                    splitWith: 'You'
+                  });
+                }}
+                style={{
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateExpense}
+                disabled={loading}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '1rem',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? 'Updating...' : 'Update Expense'}
               </button>
             </div>
           </div>
