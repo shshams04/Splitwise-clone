@@ -1,13 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GroupDetail from './pages/GroupDetail';
+import DemoMode from './components/DemoMode';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import api from './api';
 
 function App() {
+  const [demoMode, setDemoMode] = useState(false);
+  const [checkingBackend, setCheckingBackend] = useState(true);
+
+  useEffect(() => {
+    // Check if backend is available
+    const checkBackend = async () => {
+      try {
+        await api.get('/auth/me');
+        setDemoMode(false);
+      } catch (error) {
+        setDemoMode(true);
+      } finally {
+        setCheckingBackend(false);
+      }
+    };
+
+    checkBackend();
+  }, []);
+
+  if (checkingBackend) {
+    return <div className="flex justify-center items-center h-screen">Checking deployment...</div>;
+  }
+
+  if (demoMode) {
+    return <DemoMode />;
+  }
+
   return (
     <AuthProvider>
       <Router>
