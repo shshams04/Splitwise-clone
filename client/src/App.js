@@ -76,6 +76,18 @@ function App() {
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(false);
   
+  // Auth form state
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: ''
+  });
+  const [registerForm, setRegisterForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+
   // Authentication state
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState('');
