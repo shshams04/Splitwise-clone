@@ -44,9 +44,12 @@ function App() {
 
   const loadGroups = async () => {
     try {
+      console.log('Loading groups from Supabase...');
       const { data } = await supabase.select('groups');
+      console.log('Groups loaded:', data);
       setGroups(data || []);
     } catch (error) {
+      console.error('Error loading groups:', error);
       console.log('Using local groups for demo');
     }
   };
@@ -55,6 +58,7 @@ function App() {
     if (groupName.trim()) {
       setLoading(true);
       try {
+        console.log('Creating group in Supabase:', groupName);
         // Try to save to Supabase
         const newGroup = {
           name: groupName,
@@ -63,6 +67,7 @@ function App() {
         };
         
         const { data } = await supabase.insert('groups', newGroup);
+        console.log('Group created in Supabase:', data);
         
         // Update local state with the new group
         setGroups([...groups, { 
@@ -74,7 +79,9 @@ function App() {
         setGroupName('');
         setShowCreateGroup(false);
       } catch (error) {
+        console.error('Error creating group:', error);
         // Fallback to local storage if Supabase fails
+        console.log('Falling back to local storage');
         const newGroup = { 
           id: Date.now(), 
           name: groupName, 
