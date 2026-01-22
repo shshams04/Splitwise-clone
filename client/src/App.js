@@ -99,7 +99,6 @@ function App() {
   
   // Authentication state
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
   
   // Expense tracking state
@@ -127,25 +126,23 @@ function App() {
 
   // Check for existing user on mount
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem('supabase_token');
-      if (token) {
-        // Simple token validation - if token exists, assume user is logged in
-        setCurrentPage('dashboard');
-        loadGroups();
-      } else {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('supabase_token');
+        if (token) {
+          // Simple token validation - if token exists, assume user is logged in
+          setCurrentPage('dashboard');
+          loadGroups();
+        } else {
+          setCurrentPage('login');
+        }
+      } catch (error) {
         setCurrentPage('login');
       }
-    } catch (error) {
-      setCurrentPage('login');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
+    };
+    
+    checkAuth();
+  }, []);
 
   const handleLogin = async () => {
     if (!loginForm.email || !loginForm.password) {
