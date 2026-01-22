@@ -101,6 +101,11 @@ function App() {
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState('');
   
+  // Group member state
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [memberEmail, setMemberEmail] = useState('');
+  const [groupMembers, setGroupMembers] = useState([]);
+
   // Expense tracking state
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showAddExpense, setShowAddExpense] = useState(false);
@@ -363,6 +368,7 @@ function App() {
   const handleViewGroup = (group) => {
     setSelectedGroup(group);
     loadExpenses(group.id);
+    loadGroupMembers(group.id);
   };
 
   const loadExpenses = async (groupId) => {
@@ -534,6 +540,70 @@ function App() {
   const handleBackToGroups = () => {
     setSelectedGroup(null);
     setExpenses([]);
+    setGroupMembers([]);
+  };
+
+  // Group member management functions
+  const handleAddMember = async () => {
+    if (!memberEmail.trim()) {
+      alert('Please enter an email address');
+      return;
+    }
+
+    if (!memberEmail.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('Adding member to group:', memberEmail, selectedGroup.id);
+      
+      // For now, add to local state (we'll integrate with Supabase users table later)
+      const newMember = {
+        id: Date.now(),
+        email: memberEmail.trim(),
+        groupId: selectedGroup.id,
+        joinedAt: new Date().toLocaleDateString()
+      };
+      
+      const updatedMembers = [...groupMembers, newMember];
+      setGroupMembers(updatedMembers);
+      
+      // Save to localStorage for persistence
+      localStorage.setItem(`members_${selectedGroup.id}`, JSON.stringify(updatedMembers));
+      
+      console.log('Member added successfully:', newMember);
+      
+      setMemberEmail('');
+      setShowAddMember(false);
+    } catch (error) {
+      console.error('Error adding member:', error);
+      alert('Failed to add member. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadGroupMembers = async (groupId) => {
+    try {
+      console.log('Loading members for group:', groupId);
+      const localMembers = JSON.parse(localStorage.getItem(`members_${groupId}`) || '[]');
+      console.log('Local members found:', localMembers);
+      setGroupMembers(localMembers);
+    } catch (error) {
+      console.error('Error loading group members:', error);
+      setGroupMembers([]);
+    }
+  };
+
+  const handleRemoveMember = (memberId) => {
+    if (window.confirm('Are you sure you want to remove this member?')) {
+      const updatedMembers = groupMembers.filter(member => member.id !== memberId);
+      setGroupMembers(updatedMembers);
+      localStorage.setItem(`members_${selectedGroup.id}`, JSON.stringify(updatedMembers));
+      console.log('Member removed:', memberId);
+    }
   };
 
   // Balance calculation functions
@@ -703,6 +773,72 @@ function App() {
               )}
             </div>
           )}
+
+          {/* Group Members */}
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827' }}>Group Members</h2>
+              <button
+                onClick={() => setShowAddMember(true)}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                + Add Member
+              </button>
+            </div>
+            
+            {groupMembers.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '16px' }}>👥</div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>No members yet</h3>
+                <p style={{ color: '#6b7280' }}>Add members to start splitting expenses!</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                {groupMembers.map(member => (
+                  <div key={member.id} style={{ 
+                    backgroundColor: 'white', 
+                    padding: '16px', 
+                    borderRadius: '8px', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                        {member.email}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        Joined {member.joinedAt}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveMember(member.id)}
+                      style={{
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem'
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827' }}>Expenses</h2>
@@ -1117,8 +1253,8 @@ function App() {
           bottom: 0,
           backgroundColor: 'rgba(0,0,0,0.5)',
           display: 'flex',
-          alignItems: 'center',
           justifyContent: 'center',
+          alignItems: 'center',
           zIndex: 1000
         }}>
           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '400px', width: '100%', margin: '16px' }}>
@@ -1196,6 +1332,90 @@ function App() {
                 }}
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Add Member Modal */}
+      {showAddMember && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '32px',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '400px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', marginBottom: '24px' }}>
+              Add Group Member
+            </h2>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={memberEmail}
+                onChange={(e) => setMemberEmail(e.target.value)}
+                placeholder="Enter email address"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowAddMember(false);
+                  setMemberEmail('');
+                }}
+                style={{
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddMember}
+                disabled={loading}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '1rem',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? 'Adding...' : 'Add Member'}
               </button>
             </div>
           </div>
