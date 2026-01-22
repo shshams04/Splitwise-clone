@@ -378,10 +378,15 @@ function App() {
       console.log('User ID:', user?.id);
       
       // Always check localStorage first (most reliable for now)
-      console.log('Checking localStorage for key:', `expenses_${groupId}`);
-      const localExpenses = JSON.parse(localStorage.getItem(`expenses_${groupId}`) || '[]');
-      console.log('Local expenses found:', localExpenses);
-      console.log('Local expenses count:', localExpenses.length);
+      const localStorageKey = `expenses_${groupId}`;
+      console.log('🔍 Checking localStorage for key:', localStorageKey);
+      
+      const localExpenses = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+      console.log('📦 Local expenses found:', localExpenses);
+      console.log('📊 Local expenses count:', localExpenses.length);
+      
+      // Debug: Show all localStorage keys
+      console.log('🔑 All localStorage keys:', Object.keys(localStorage));
       
       if (localExpenses.length > 0) {
         console.log('✅ Using local expenses');
@@ -390,30 +395,30 @@ function App() {
       }
       
       // If no local expenses, try Supabase
-      console.log('No local expenses, trying Supabase...');
+      console.log('🌐 No local expenses, trying Supabase...');
       try {
         const { data } = await supabase.select('expenses');
-        console.log('All expenses from Supabase:', data);
+        console.log('📋 All expenses from Supabase:', data);
         
         const groupExpenses = data.filter(expense => {
-          console.log('Comparing expense.group_id:', expense.group_id, 'with groupId:', groupId);
-          console.log('Match:', expense.group_id === groupId);
+          console.log('🔍 Comparing expense.group_id:', expense.group_id, 'with groupId:', groupId);
+          console.log('✅ Match:', expense.group_id === groupId);
           return expense.group_id === groupId;
         });
         
-        console.log('Filtered expenses for group:', groupExpenses);
-        console.log('Supabase expenses count:', groupExpenses.length);
+        console.log('📊 Filtered expenses for group:', groupExpenses);
+        console.log('📊 Supabase expenses count:', groupExpenses.length);
         
         if (groupExpenses.length > 0) {
           console.log('✅ Using Supabase expenses');
           setExpenses(groupExpenses);
           // Also save to localStorage as backup
-          localStorage.setItem(`expenses_${groupId}`, JSON.stringify(groupExpenses));
-          console.log('Saved Supabase expenses to localStorage backup');
+          localStorage.setItem(localStorageKey, JSON.stringify(groupExpenses));
+          console.log('💾 Saved Supabase expenses to localStorage backup');
           return;
         }
       } catch (supabaseError) {
-        console.error('Supabase loading failed:', supabaseError);
+        console.error('❌ Supabase loading failed:', supabaseError);
       }
       
       // No expenses found anywhere
@@ -421,7 +426,7 @@ function App() {
       setExpenses([]);
       
     } catch (error) {
-      console.error('Error loading expenses:', error);
+      console.error('❌ Error loading expenses:', error);
       setExpenses([]);
     }
   };
@@ -440,6 +445,7 @@ function App() {
       console.log('Creating expense:', newExpense);
       console.log('Selected group ID:', selectedGroup.id);
       console.log('Selected group:', selectedGroup);
+      console.log('localStorage key will be:', `expenses_${selectedGroup.id}`);
 
       setLoading(true);
       try {
@@ -468,9 +474,11 @@ function App() {
         console.log('Updated expenses list:', updatedExpenses);
         setExpenses(updatedExpenses);
         
-        // Also save to localStorage as backup
-        localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
-        console.log('Saved to localStorage backup:', `expenses_${selectedGroup.id}`);
+        // Always save to localStorage as backup
+        const localStorageKey = `expenses_${selectedGroup.id}`;
+        localStorage.setItem(localStorageKey, JSON.stringify(updatedExpenses));
+        console.log('💾 Saved to localStorage backup:', localStorageKey);
+        console.log('💾 localStorage contents:', JSON.stringify(updatedExpenses));
         
         // Reset form
         setExpenseForm({
@@ -497,8 +505,11 @@ function App() {
         const updatedExpenses = [...expenses, fallbackExpense];
         console.log('Fallback expenses list:', updatedExpenses);
         setExpenses(updatedExpenses);
-        localStorage.setItem(`expenses_${selectedGroup.id}`, JSON.stringify(updatedExpenses));
-        console.log('Saved to localStorage:', `expenses_${selectedGroup.id}`);
+        
+        const localStorageKey = `expenses_${selectedGroup.id}`;
+        localStorage.setItem(localStorageKey, JSON.stringify(updatedExpenses));
+        console.log('💾 Saved to localStorage fallback:', localStorageKey);
+        console.log('💾 localStorage contents:', JSON.stringify(updatedExpenses));
         
         // Reset form
         setExpenseForm({
