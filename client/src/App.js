@@ -197,18 +197,35 @@ function App() {
         passwordLength: registerForm.password.length
       });
       
-      const { data } = await supabase.signUp(registerForm.email, registerForm.password, registerForm.username);
+      // Try a simpler approach - just create user without email confirmation
+      const response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: registerForm.email,
+          password: registerForm.password,
+          options: {
+            data: {
+              username: registerForm.username
+            }
+          }
+        })
+      });
       
+      const data = await response.json();
       console.log('Registration response:', data);
       
-      if (data.access_token) {
+      if (response.ok && data.access_token) {
         localStorage.setItem('supabase_token', data.access_token);
         setUser(data.user);
         setCurrentPage('dashboard');
         loadGroups();
       } else {
-        console.log('No access token in response');
-        setAuthError('Registration failed. Please check your email and try again.');
+        console.log('No access token in response or error:', data);
+        setAuthError(`Registration failed: ${data.msg || data.message || 'Please check Supabase auth settings.'}`);
       }
     } catch (error) {
       console.error('Registration error:', error);
