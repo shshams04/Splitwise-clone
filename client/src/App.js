@@ -154,18 +154,36 @@ function App() {
     setAuthError('');
     
     try {
+      console.log('Attempting login with:', { email: loginForm.email });
+      
       const { data } = await supabase.signIn(loginForm.email, loginForm.password);
       
+      console.log('Login response:', data);
+      
       if (data.access_token) {
+        // Store token
         localStorage.setItem('supabase_token', data.access_token);
+        
+        // Set user state
         setUser(data.user);
+        
+        // Clear any previous state
+        setSelectedGroup(null);
+        setExpenses([]);
+        setAuthError('');
+        
+        // Navigate to dashboard
         setCurrentPage('dashboard');
         loadGroups();
+        
+        console.log('Login successful for:', data.user.email);
       } else {
+        console.log('No access token in login response');
         setAuthError('Login failed. Please check your credentials.');
       }
     } catch (error) {
-      setAuthError('Login failed. Please try again.');
+      console.error('Login error:', error);
+      setAuthError('Login failed. Please check your email and password.');
     } finally {
       setLoading(false);
     }
@@ -244,14 +262,42 @@ function App() {
   };
 
   const handleSignOut = async () => {
+    setLoading(true);
     try {
+      console.log('Signing out user...');
+      
+      // Call Supabase sign out
       await supabase.signOut();
+      
+      // Clear local storage
+      localStorage.removeItem('supabase_token');
+      
+      // Clear all app state
+      setUser(null);
+      setGroups([]);
+      setSelectedGroup(null);
+      setExpenses([]);
+      setAuthError('');
+      
+      // Reset forms
+      setLoginForm({ email: '', password: '' });
+      setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' });
+      
+      // Redirect to login page
+      setCurrentPage('login');
+      
+      console.log('User signed out successfully');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Even if Supabase sign out fails, clear local state
       localStorage.removeItem('supabase_token');
       setUser(null);
       setGroups([]);
+      setSelectedGroup(null);
+      setExpenses([]);
       setCurrentPage('login');
-    } catch (error) {
-      console.error('Sign out error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -811,17 +857,18 @@ function App() {
                   </span>
                   <button
                     onClick={handleSignOut}
+                    disabled={loading}
                     style={{
                       color: '#6b7280',
                       background: 'none',
                       border: 'none',
-                      cursor: 'pointer',
+                      cursor: loading ? 'not-allowed' : 'pointer',
                       fontSize: '14px',
                       padding: '8px 12px',
                       borderRadius: '4px'
                     }}
                   >
-                    Sign Out
+                    {loading ? 'Signing out...' : 'Sign Out'}
                   </button>
                 </>
               ) : (
