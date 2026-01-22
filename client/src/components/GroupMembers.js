@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import api from '../api';
+import { dbHelpers } from '../supabaseClient';
 
 const GroupMembers = ({ group, currentUser, onMemberAdded, onMemberRemoved }) => {
   const [email, setEmail] = useState('');

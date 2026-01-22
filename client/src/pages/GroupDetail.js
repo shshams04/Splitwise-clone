@@ -6,7 +6,7 @@ import BalanceSummary from '../components/BalanceSummary';
 import GroupMembers from '../components/GroupMembers';
 import { PlusIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
-import api from '../api';
+import { dbHelpers } from '../supabaseClient';
 
 const GroupDetail = () => {
   const { id } = useParams();
@@ -20,9 +20,9 @@ const GroupDetail = () => {
     const fetchGroupData = async () => {
       try {
         const [groupRes, expensesRes, balancesRes] = await Promise.all([
-          api.get(`/groups/${id}`),
-          api.get(`/expenses/group/${id}`),
-          api.get(`/expenses/balances/${id}`)
+          dbHelpers.getGroup(id),
+          dbHelpers.getGroupExpenses(id),
+          { data: [] } // Placeholder for balances
         ]);
         
         setGroup(groupRes.data);

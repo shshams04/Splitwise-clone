@@ -120,5 +120,14 @@ export const dbHelpers = {
       .eq('email', email)
       .single();
     return { data, error };
+  },
+
+  async getGroup(groupId) {
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('id', groupId)
+      .single();
+    return { data, error };
   }
 };
