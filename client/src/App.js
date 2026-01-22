@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
 
 // Simple Supabase client
 const supabaseUrl = 'https://livinwsodaxjasdnrohx.supabase.co';
@@ -72,8 +72,6 @@ const supabase = {
 function App() {
   const [currentPage, setCurrentPage] = useState('loading');
   const [groups, setGroups] = useState([]);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(false);
   
   // Auth form state
@@ -129,28 +127,6 @@ function App() {
       setGroups(data || []);
     } catch (error) {
       console.error('Error loading groups:', error);
-    }
-  };
-
-  const handleCreateGroup = async () => {
-    if (groupName.trim()) {
-      setLoading(true);
-      try {
-        const newGroup = {
-          name: groupName,
-          created_at: new Date().toISOString()
-        };
-        
-        const { data } = await supabase.insert('groups', newGroup);
-        setGroups([...groups, { ...newGroup, id: data[0]?.id || Date.now() }]);
-        
-        setGroupName('');
-        setShowCreateGroup(false);
-      } catch (error) {
-        console.error('Error creating group:', error);
-      } finally {
-        setLoading(false);
-      }
     }
   };
 
@@ -293,20 +269,6 @@ function App() {
     }
   };
 
-  const handleSignOut = async () => {
-    try {
-      await supabase.signOut();
-      localStorage.removeItem('supabase_token');
-      setUser(null);
-      setGroups([]);
-      setSelectedGroup(null);
-      setExpenses([]);
-      setCurrentPage('login');
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
-  };
-
   const renderPage = () => {
     // Show loading while checking auth
     if (currentPage === 'loading') {
@@ -417,20 +379,6 @@ function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>My Groups</h1>
-              <button
-                onClick={() => setShowCreateGroup(true)}
-                style={{
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                + Create Group
-              </button>
             </div>
 
             {groups.length === 0 ? (
