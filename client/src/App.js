@@ -372,6 +372,76 @@ function App() {
     setExpenses([]);
   };
 
+  // Balance calculation functions
+  const calculateBalances = (expenses) => {
+    const balances = {};
+    
+    expenses.forEach(expense => {
+      const amount = expense.amount;
+      const paidBy = expense.paidBy;
+      const splitWith = expense.splitWith;
+      
+      // Initialize balances if not exists
+      if (!balances[paidBy]) balances[paidBy] = 0;
+      if (!balances[splitWith]) balances[splitWith] = 0;
+      
+      // Person who paid gets credit for the full amount
+      balances[paidBy] += amount;
+      
+      // Person who split with owes their share
+      balances[splitWith] -= amount;
+    });
+    
+    return balances;
+  };
+
+  const getSettlements = (balances) => {
+    const settlements = [];
+    const debtors = [];
+    const creditors = [];
+    
+    // Separate debtors (owe money) and creditors (are owed money)
+    Object.entries(balances).forEach(([person, balance]) => {
+      if (balance < 0) {
+        debtors.push({ person, amount: Math.abs(balance) });
+      } else if (balance > 0) {
+        creditors.push({ person, amount: balance });
+      }
+    });
+    
+    // Calculate optimal settlements
+    let debtorIndex = 0;
+    let creditorIndex = 0;
+    
+    while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+      const debtor = debtors[debtorIndex];
+      const creditor = creditors[creditorIndex];
+      
+      const settlementAmount = Math.min(debtor.amount, creditor.amount);
+      
+      settlements.push({
+        from: debtor.person,
+        to: creditor.person,
+        amount: settlementAmount
+      });
+      
+      debtor.amount -= settlementAmount;
+      creditor.amount -= settlementAmount;
+      
+      if (debtor.amount === 0) debtorIndex++;
+      if (creditor.amount === 0) creditorIndex++;
+    }
+    
+    return settlements;
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
   const renderPage = () => {
     // Show loading while checking auth
     if (currentPage === 'loading') {
@@ -386,6 +456,9 @@ function App() {
 
     // If a group is selected, show group detail view
     if (selectedGroup) {
+      const balances = calculateBalances(expenses);
+      const settlements = getSettlements(balances);
+      
       return (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
@@ -408,6 +481,64 @@ function App() {
               {selectedGroup.name}
             </h1>
           </div>
+
+          {/* Balance Summary */}
+          {expenses.length > 0 && (
+            <div style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Balances</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                {Object.entries(balances).map(([person, balance]) => (
+                  <div key={person} style={{ 
+                    backgroundColor: 'white', 
+                    padding: '16px', 
+                    borderRadius: '8px', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    borderLeft: `4px solid ${balance >= 0 ? '#10b981' : '#ef4444'}`
+                  }}>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '4px' }}>{person}</div>
+                    <div style={{ 
+                      fontSize: '1.25rem', 
+                      fontWeight: 'bold',
+                      color: balance >= 0 ? '#10b981' : '#ef4444'
+                    }}>
+                      {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+                      {balance >= 0 ? 'is owed' : 'owes'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Settlements */}
+              {settlements.length > 0 && (
+                <div style={{ backgroundColor: '#f3f4f6', padding: '16px', borderRadius: '8px' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
+                    💰 Suggested Settlements
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {settlements.map((settlement, index) => (
+                      <div key={index} style={{ 
+                        backgroundColor: 'white', 
+                        padding: '12px', 
+                        borderRadius: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                          {settlement.from} → {settlement.to}
+                        </span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
+                          {formatCurrency(settlement.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827' }}>Expenses</h2>
