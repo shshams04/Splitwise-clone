@@ -191,7 +191,15 @@ function App() {
     setAuthError('');
     
     try {
+      console.log('Attempting registration with:', {
+        email: registerForm.email,
+        username: registerForm.username,
+        passwordLength: registerForm.password.length
+      });
+      
       const { data } = await supabase.signUp(registerForm.email, registerForm.password, registerForm.username);
+      
+      console.log('Registration response:', data);
       
       if (data.access_token) {
         localStorage.setItem('supabase_token', data.access_token);
@@ -199,10 +207,12 @@ function App() {
         setCurrentPage('dashboard');
         loadGroups();
       } else {
-        setAuthError('Registration failed. Please try again.');
+        console.log('No access token in response');
+        setAuthError('Registration failed. Please check your email and try again.');
       }
     } catch (error) {
-      setAuthError('Registration failed. Please try again.');
+      console.error('Registration error:', error);
+      setAuthError(`Registration failed: ${error.message || 'Please try again.'}`);
     } finally {
       setLoading(false);
     }
